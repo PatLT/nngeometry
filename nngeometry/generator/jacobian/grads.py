@@ -16,7 +16,7 @@ from nngeometry.layercollection import (
     LayerNormLayer,
 )
 
-from .grads_conv import conv2d_backward, convtranspose2d_backward, conv1d_backward
+from .grads_conv import conv2d_backward, convtranspose2d_backward, conv1d_backward, unfold_transpose_conv2d
 
 
 class JacobianFactory:
@@ -234,6 +234,22 @@ class ConvTranspose2dJacobianFactory(JacobianFactory):
         buffer[:, :w_numel].add_(indiv_gw.view(bs, -1))
         if layer.bias is not None:
             buffer[:, w_numel:].add_(gy.sum(dim=(2, 3)))
+            
+    @classmethod
+    def kfac_xx(cls, buffer, mod, layer, x, gy):
+        A_tilda = unfold_transpose_conv2d(mod,x)
+        A_tilda = A_tilda.permute(0, 2, 1).contiguous().view(-1, A_tilda.size(1))
+        if layer.bias is not None:
+            A_tilda = torch.cat([A_tilda, torch.ones_like(A_tilda[:, :1])], dim=1)
+        # Omega_hat in KFC
+        buffer.add_(torch.mm(A_tilda.t(), A_tilda))
+        
+    @classmethod
+    def kfac_gg(cls, buffer, mod, layer, x, gy):
+        spatial_locations = gy.size(2) * gy.size(3)
+        os = gy.size(1)
+        DS_tilda = gy.permute(0, 2, 3, 1).contiguous().view(-1, os)
+        buffer.add_(torch.mm(DS_tilda.t(), DS_tilda) / spatial_locations)
 
 
 def check_bn_training(mod):

@@ -770,7 +770,7 @@ class Jacobian:
         layer_id = self.m_to_l[mod]
         layer = self.layer_collection[layer_id]
         block = self._blocks[layer_id]
-        if mod_class in ["Linear", "Conv2d", "Conv1d"]:
+        if mod_class in ["Linear", "Conv2d", "Conv1d", "ConvTranspose2d"]:
             FactoryMap[layer.__class__].kfac_gg(block[1], mod, layer, x, gy)
             if self.i_output == 0:
                 # do this only once if n_output > 1
