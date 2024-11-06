@@ -237,8 +237,9 @@ class ConvTranspose2dJacobianFactory(JacobianFactory):
             
     @classmethod
     def kfac_xx(cls, buffer, mod, layer, x, gy):
+        s_i, s_o, k_h, k_w = mod.weight.size()
         A_tilda = unfold_transpose_conv2d(mod,x)
-        A_tilda = A_tilda.permute(0, 2, 1).contiguous().view(-1, A_tilda.size(1))
+        A_tilda = A_tilda.view(A_tilda.size(0),s_i * k_w * k_h,-1).permute(0, 2, 1).contiguous().view(-1, A_tilda.size(1))
         if layer.bias is not None:
             A_tilda = torch.cat([A_tilda, torch.ones_like(A_tilda[:, :1])], dim=1)
         # Omega_hat in KFC
